@@ -4,9 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>FLOW LUX</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0f172a">
+
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
     <style>
         :root { --p: #f472b6; --bg: #0f172a; --card: #1e293b; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -15,7 +23,7 @@
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; background: rgba(30,41,59,0.5); padding: 15px; border-radius: 20px; backdrop-filter: blur(10px); }
         h1 { font-size: 20px; color: var(--p); font-weight: 900; letter-spacing: -1px; }
         nav { display: flex; gap: 10px; }
-        nav button { background: none; border: none; color: #94a3b8; font-size: 11px; font-weight: 700; text-transform: uppercase; cursor: pointer; transition: 0.3s; }
+        nav button { background: none; border: none; color: #94a3b8; font-size: 11px; font-weight: 700; text-transform: uppercase; cursor: pointer; }
         nav button.active { color: var(--p); text-shadow: 0 0 10px rgba(244,114,182,0.5); }
 
         .card { background: var(--card); border-radius: 24px; padding: 20px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); }
@@ -65,7 +73,7 @@
             </div>
             <div id="cCalc" class="hidden" style="background:rgba(0,0,0,0.2); padding:15px; border-radius:15px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
                 <input type="number" id="get" oninput="upd()" placeholder="Сдача с..." style="width:50%">
-                <div style="text-align:right"><small style="display:block;color:#94a3b8">Сдача:</small><b id="change" style="color:var(--p);font-size:20px">0 ₽</b></div>
+                <div style="text-align:right"><b id="change" style="color:var(--p);font-size:20px">0 ₽</b></div>
             </div>
             <button onclick="save()" id="btn-save" class="main-btn" disabled>Загрузка...</button>
         </div>
@@ -81,7 +89,7 @@
             <button onclick="logE('🅱️ ТОЧКА Б')" class="log-btn"><span>🅱️</span>ТОЧКА Б</button>
             <button onclick="logE('🏁 ФИНИШ')" class="log-btn"><span>🏁</span>ФИНИШ</button>
         </div>
-        <div id="lList"></div>
+        <div id="lList" style="margin-top:10px"></div>
     </main>
 
     <main id="s-st" class="hidden">
@@ -153,7 +161,7 @@
             snap.forEach(doc => {
                 const d = doc.data(); tQ += d.q; tM += d.p;
                 if (count < 5) {
-                    html += `<div class="item ${d.t==='cash'?'cash':''}"><span>${d.q} шт — <b>${d.p} ₽</b></span><small>${d.t==='cash'?'НАЛ':'КАРТА'}</small></div>`;
+                    html += `<div class="item ${d.t==='cash'?'cash':''}"><span>${d.q} шт — <b>${d.p} ₽</b></span><small>${d.t==='cash'?'НАЛ':'КАРТ'}</small></div>`;
                     count++;
                 }
             });
@@ -166,30 +174,24 @@
             let html = "";
             snap.forEach(doc => {
                 const d = doc.data();
-                html += `<div style="font-size:10px; color:#64748b; margin-bottom:5px">📍 ${d.s}: ${d.c}</div>`;
+                html += `<div style="font-size:11px; color:#64748b; margin-bottom:5px">📍 ${d.s}: ${d.c}</div>`;
             });
             document.getElementById('lList').innerHTML = html;
         });
 
         window.exportExcel = async () => {
-            const btn = document.getElementById('btn-excel');
-            btn.innerText = "ГЕНЕРАЦИЯ...";
+            if (typeof XLSX === 'undefined') { alert("Excel библиотека не загружена"); return; }
             const snap = await db.collection("sales").get();
             let totalQ = 0, totalP = 0;
             const data = snap.docs.map(doc => {
-                const d = doc.data();
-                totalQ += d.q; totalP += d.p;
+                const d = doc.data(); totalQ += d.q; totalP += d.p;
                 return { "Дата": d.dt?.toDate().toLocaleString() || "-", "Кол-во": d.q, "Сумма": d.p, "Тип": d.t };
             });
-            
-            data.push({}); 
-            data.push({ "Дата": "ИТОГО:", "Кол-во": totalQ, "Сумма": totalP });
-
+            data.push({}); data.push({ "Дата": "ИТОГО:", "Кол-во": totalQ, "Сумма": totalP });
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Продажи");
+            XLSX.utils.book_append_sheet(wb, ws, "Sales");
             XLSX.writeFile(wb, "Flow_Report.xlsx");
-            btn.innerText = "💾 СКАЧАТЬ EXCEL";
         };
     </script>
 </body>
