@@ -3,105 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FLOW ADMIN | LIGHT & SECURE</title>
+    <title>FLOW LUX | АНАЛИТИКА</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <style>
-        :root { --p: #be185d; --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --tea: #059669; }
-        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 20px; }
+        :root { --p: #be185d; --bg: #f1f5f9; --card: #ffffff; --text: #1e293b; --tea: #059669; --blue: #3b82f6; }
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 15px; }
         
-        /* Экран авторизации */
         #auth-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .auth-card { background: #fff; padding: 40px; border-radius: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); text-align: center; border: 1px solid #e2e8f0; }
-        .auth-card h2 { margin-bottom: 20px; color: var(--text); }
-        .auth-card input { padding: 15px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 28px; width: 160px; text-align: center; outline: none; transition: 0.3s; }
-        .auth-card input:focus { border-color: var(--p); box-shadow: 0 0 0 4px rgba(190, 24, 93, 0.1); }
+        .auth-card { background: #fff; padding: 40px; border-radius: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); text-align: center; }
+        .auth-card input { padding: 15px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 28px; width: 160px; text-align: center; outline: none; }
 
         .hidden { display: none !important; }
-
-        /* Контент */
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         h1 { color: var(--p); margin: 0; font-weight: 900; font-size: 22px; }
 
-        .tg-box { background: #fff; border: 1px solid #e2e8f0; padding: 15px; border-radius: 16px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .tg-box input { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; flex: 1; min-width: 200px; }
-        .btn-test { background: #0ea5e9; color: #fff; border: none; padding: 8px 15px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 12px; }
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: var(--card); padding: 15px; border-radius: 18px; border: 1px solid #e2e8f0; text-align: center; }
+        .stat-card small { color: #64748b; font-size: 10px; text-transform: uppercase; font-weight: 800; }
+        .stat-card b { display: block; font-size: 20px; margin-top: 5px; color: #0f172a; }
 
-        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 25px; }
-        .stat-card { background: var(--card); padding: 20px; border-radius: 18px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-        .stat-card small { color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; }
-        .stat-card b { display: block; font-size: 26px; margin-top: 8px; color: #0f172a; }
+        .analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        .ana-card { background: #fff; padding: 15px; border-radius: 18px; border: 1px solid #e2e8f0; }
+        .ana-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: 600; }
+        
+        .progress-bar { height: 8px; background: #e2e8f0; border-radius: 10px; overflow: hidden; display: flex; margin-top: 10px; }
+        .progress-fill { height: 100%; transition: 0.5s; }
 
         .main-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
         @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
 
-        .table-container { background: var(--card); border-radius: 20px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); }
+        .table-container { background: var(--card); border-radius: 20px; border: 1px solid #e2e8f0; overflow: hidden; }
         table { width: 100%; border-collapse: collapse; }
-        th { background: #f8fafc; text-align: left; padding: 15px; color: #64748b; font-size: 12px; font-weight: 800; }
-        td { padding: 15px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
-        tr:hover { background: #fff1f2; }
-
-        .badge { padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 900; text-transform: uppercase; }
+        th { background: #f8fafc; text-align: left; padding: 12px; color: #64748b; font-size: 11px; font-weight: 800; }
+        td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+        
+        .badge { padding: 3px 6px; border-radius: 5px; font-size: 9px; font-weight: 900; }
         .badge-cash { background: #dcfce7; color: #166534; }
         .badge-card { background: #dbeafe; color: #1e40af; }
 
-        .log-item { background: #fff; padding: 15px; border-radius: 14px; margin-bottom: 10px; border: 1px solid #e2e8f0; border-left: 4px solid var(--p); }
-        .log-time { font-size: 10px; color: #94a3b8; display: block; margin-top: 5px; }
-        
-        #notif-btn { background: #fff7ed; border: 1px solid #ffedd5; color: #9a3412; padding: 10px; border-radius: 12px; margin-bottom: 15px; text-align: center; cursor: pointer; font-size: 13px; display: none; width: 100%; font-weight: 600; }
+        .log-item { background: #fff; padding: 12px; border-radius: 14px; margin-bottom: 8px; border-left: 4px solid var(--p); border: 1px solid #e2e8f0; border-left: 4px solid var(--p); }
     </style>
 </head>
 <body>
 
     <div id="auth-screen">
         <div class="auth-card">
-            <h2>🔐 FLOW ADMIN</h2>
-            <input type="password" id="pass-input" placeholder="Код" maxlength="4" oninput="checkPass(this)">
+            <h2>🔑 FLOW ADMIN</h2>
+            <input type="password" id="pass-input" maxlength="4" oninput="checkPass(this)">
         </div>
     </div>
 
     <div id="main-content" class="hidden">
-        
-        <div id="notif-btn" onclick="requestNotif()">🔔 Включить уведомления в браузере</div>
-
-        <div class="tg-box">
-            <input type="text" id="tg-token" placeholder="Telegram Bot Token" onchange="saveTg()">
-            <input type="text" id="tg-id" placeholder="Ваш Chat ID" onchange="saveTg()">
-            <button class="btn-test" onclick="testTg()">ПРОВЕРИТЬ ТГ</button>
-            <span id="tg-status" style="font-size: 11px; font-weight: 700;"></span>
-        </div>
-
         <div class="header">
-            <h1>FLOW LUX | LIVE</h1>
-            <button onclick="logout()" style="background:none; border:none; color:#94a3b8; font-weight:700; cursor:pointer;">ВЫЙТИ</button>
+            <h1>FLOW LUX | АНАЛИТИКА</h1>
+            <button onclick="logout()" style="background:none; border:none; color:#94a3b8; font-weight:700; cursor:pointer;">ВЫХОД</button>
         </div>
 
         <div class="dashboard">
-            <div class="stat-card"><small>Чеков</small><b id="stCount">0</b></div>
-            <div class="stat-card"><small>Выручка</small><b id="stSales" style="color:var(--tea)">0 ₽</b></div>
+            <div class="stat-card"><small>Выручка</small><b id="stSales">0 ₽</b></div>
             <div class="stat-card"><small>Чаевые</small><b id="stTips" style="color:#f59e0b">0 ₽</b></div>
-            <div class="stat-card"><small>ОБЩИЙ ВАЛ</small><b id="stGrand" style="color:var(--p)">0 ₽</b></div>
+            <div class="stat-card"><small>ИТОГО</small><b id="stGrand" style="color:var(--p)">0 ₽</b></div>
+            <div class="stat-card"><small>Чеков</small><b id="stCount">0</b></div>
+        </div>
+
+        <div class="analysis-grid">
+            <div class="ana-card">
+                <div class="ana-row"><span>💳 Карта:</span><span id="anaCard">0 ₽</span></div>
+                <div class="ana-row"><span>💵 Наличка:</span><span id="anaCash">0 ₽</span></div>
+                <div class="progress-bar">
+                    <div id="barCard" class="progress-fill" style="background:var(--blue); width: 50%"></div>
+                    <div id="barCash" class="progress-fill" style="background:var(--tea); width: 50%"></div>
+                </div>
+            </div>
+            <div class="ana-card">
+                <div class="ana-row"><span>📈 Средний чек:</span><b id="anaAvg">0 ₽</b></div>
+                <div class="ana-row"><span>🎁 % Чаевых:</span><b id="anaTipPerc">0 %</b></div>
+                <small style="color:#94a3b8; font-size:10px">эффективность от продаж</small>
+            </div>
         </div>
 
         <div class="main-grid">
             <div class="table-container">
                 <table>
                     <thead>
-                        <tr>
-                            <th>ВРЕМЯ</th>
-                            <th>ТОВАР</th>
-                            <th>СУММА</th>
-                            <th>ЧАЙ</th>
-                            <th>ТИП</th>
-                        </tr>
+                        <tr><th>ВРЕМЯ</th><th>ТОВАР</th><th>СУММА</th><th>ТИП</th></tr>
                     </thead>
                     <tbody id="salesTable"></tbody>
                 </table>
             </div>
-
-            <div id="logsContainer">
-                <div style="font-size: 12px; font-weight: 800; color: #64748b; margin-bottom: 15px; text-transform: uppercase;">Логистика</div>
-            </div>
+            <div id="logsContainer"></div>
         </div>
     </div>
 
@@ -117,109 +108,58 @@
         firebase.initializeApp(config);
         const db = firebase.firestore();
 
-        // 1. АВТОРИЗАЦИЯ
-        function checkPass(el) {
-            if (el.value === '3011') {
-                localStorage.setItem('admin_logged', 'true');
-                startApp();
-            }
-        }
-        function logout() { localStorage.removeItem('admin_logged'); location.reload(); }
-        if (localStorage.getItem('admin_logged') === 'true') startApp();
+        function checkPass(el) { if (el.value === '3011') { localStorage.setItem('adm_l', '1'); start(); } }
+        function logout() { localStorage.removeItem('adm_l'); location.reload(); }
+        if (localStorage.getItem('adm_l') === '1') start();
 
-        function startApp() {
+        function start() {
             document.getElementById('auth-screen').classList.add('hidden');
             document.getElementById('main-content').classList.remove('hidden');
-            loadData();
-            if (Notification.permission !== "granted") document.getElementById('notif-btn').style.display = 'block';
+            init();
         }
 
-        // 2. УВЕДОМЛЕНИЯ (БРАУЗЕР)
-        function requestNotif() {
-            Notification.requestPermission().then(p => {
-                if (p === 'granted') document.getElementById('notif-btn').style.display = 'none';
-            });
-        }
-        function sendBrowserNotif(t, b) {
-            if (Notification.permission === 'granted') new Notification(t, { body: b, icon: 'https://cdn-icons-png.flaticon.com/512/2544/2544336.png' });
-        }
-
-        // 3. TELEGRAM
-        document.getElementById('tg-token').value = localStorage.getItem('tg_t') || '';
-        document.getElementById('tg-id').value = localStorage.getItem('tg_i') || '';
-
-        function saveTg() {
-            localStorage.setItem('tg_t', document.getElementById('tg-token').value);
-            localStorage.setItem('tg_i', document.getElementById('tg-id').value);
-        }
-
-        async function sendTg(txt) {
-            const t = localStorage.getItem('tg_t'), i = localStorage.getItem('tg_i');
-            if (!t || !i) return;
-            await fetch(`https://api.telegram.org/bot${t}/sendMessage?chat_id=${i}&text=${encodeURIComponent(txt)}`);
-        }
-
-        async function testTg() {
-            const s = document.getElementById('tg-status');
-            s.innerText = "⏳ Ждите..."; s.style.color = "orange";
-            try {
-                await sendTg("✅ Проверка связи FLOW LUX выполнена!");
-                s.innerText = "✅ УШЛО!"; s.style.color = "green";
-            } catch(e) { 
-                s.innerText = "❌ ОШИБКА"; s.style.color = "red"; 
-            }
-        }
-
-        // 4. ДАННЫЕ
-        function loadData() {
-            let initial = true;
-
-            // СЛУШАТЕЛЬ ПРОДАЖ
+        function init() {
             db.collection("sales").orderBy("dt", "desc").onSnapshot(snap => {
-                let tC = 0, tS = 0, tT = 0, html = "";
+                let count = 0, sales = 0, tips = 0, cash = 0, card = 0, html = "";
                 
-                if (!initial) {
-                    snap.docChanges().forEach(c => {
-                        if (c.type === "added") {
-                            const d = c.doc.data();
-                            const msg = `🌸 ПРОДАЖА: ${d.p} ₽ (${d.q} шт)${d.tips ? ' + '+d.tips+' чай' : ''} [${d.t==='cash'?'НАЛ':'КАРТА'}]`;
-                            sendBrowserNotif("FLOW LUX", msg);
-                            sendTg(msg);
-                        }
-                    });
-                }
-
                 snap.forEach(doc => {
                     const d = doc.data();
-                    tC++; tS += (d.p||0); tT += (d.tips||0);
+                    const p = d.p || 0, t = d.tips || 0;
+                    count++; sales += p; tips += t;
+                    if(d.t === 'cash') cash += p; else card += p;
+
                     const time = d.dt ? d.dt.toDate().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}) : '--:--';
                     html += `<tr>
                         <td><b>${time}</b></td>
                         <td>${d.q} шт</td>
-                        <td><b>${d.p.toLocaleString()} ₽</b></td>
-                        <td style="color:var(--tea)">${d.tips ? '+'+d.tips : '-'}</td>
+                        <td><b>${p}</b> <small style="color:var(--tea)">+${t}</small></td>
                         <td><span class="badge ${d.t==='cash'?'badge-cash':'badge-card'}">${d.t==='cash'?'Нал':'Карт'}</span></td>
                     </tr>`;
                 });
 
+                // Обновление UI
                 document.getElementById('salesTable').innerHTML = html;
-                document.getElementById('stCount').innerText = tC;
-                document.getElementById('stSales').innerText = tS.toLocaleString() + " ₽";
-                document.getElementById('stTips').innerText = tT.toLocaleString() + " ₽";
-                document.getElementById('stGrand').innerText = (tS + tT).toLocaleString() + " ₽";
-                initial = false;
+                document.getElementById('stCount').innerText = count;
+                document.getElementById('stSales').innerText = sales.toLocaleString() + " ₽";
+                document.getElementById('stTips').innerText = tips.toLocaleString() + " ₽";
+                document.getElementById('stGrand').innerText = (sales + tips).toLocaleString() + " ₽";
+                
+                // Аналитика
+                document.getElementById('anaCard').innerText = card.toLocaleString() + " ₽";
+                document.getElementById('anaCash').innerText = cash.toLocaleString() + " ₽";
+                document.getElementById('anaAvg').innerText = count ? Math.round(sales/count) + " ₽" : "0 ₽";
+                document.getElementById('anaTipPerc').innerText = sales ? Math.round((tips/sales)*100) + " %" : "0 %";
+                
+                const cardPerc = sales ? (card/sales)*100 : 50;
+                document.getElementById('barCard').style.width = cardPerc + "%";
+                document.getElementById('barCash').style.width = (100 - cardPerc) + "%";
             });
 
-            // СЛУШАТЕЛЬ ТОЧЕК
-            db.collection("logs").orderBy("dt", "desc").onSnapshot(snap => {
-                let html = `<div style="font-size: 12px; font-weight: 800; color: #64748b; margin-bottom: 15px; text-transform: uppercase;">Логистика</div>`;
+            db.collection("logs").orderBy("dt", "desc").limit(10).onSnapshot(snap => {
+                let html = "<small style='font-weight:800; color:#64748b'>ЛОГИСТИКА</small><br><br>";
                 snap.forEach(doc => {
                     const d = doc.data();
-                    const time = d.dt ? d.dt.toDate().toLocaleString('ru-RU') : '...';
-                    html += `<div class="log-item">
-                        <b>${d.s}</b><br><small style="color:#64748b">${d.c}</small>
-                        <span class="log-time">${time}</span>
-                    </div>`;
+                    html += `<div class="log-item"><b>${d.s}</b><br><small>${d.c}</small></div>`;
                 });
                 document.getElementById('logsContainer').innerHTML = html;
             });
