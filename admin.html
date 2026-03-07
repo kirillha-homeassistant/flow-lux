@@ -1,164 +1,38 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FLOW ADMIN | SECURE</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <style>
-        :root { --p: #be185d; --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --tea: #059669; }
-        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; }
-        
-        /* Авторизация */
-        #auth-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .auth-card { background: #fff; padding: 40px; border-radius: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); text-align: center; }
-        .auth-card input { padding: 15px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 24px; width: 150px; text-align: center; outline: none; }
-        .auth-card input:focus { border-color: var(--p); }
+<div class="tg-settings">
+    <b>Настройка Telegram:</b><br>
+    <input type="text" id="tg-token" placeholder="Bot Token" onchange="saveTg()">
+    <input type="text" id="tg-id" placeholder="Your Chat ID" onchange="saveTg()">
+    <button onclick="testTg()" style="padding: 5px 10px; cursor: pointer; background: var(--p); color: #fff; border: none; border-radius: 5px;">ПРОВЕРИТЬ ТГ</button>
+    <br><small id="tg-status" style="color: gray;">Введите данные и нажмите проверить</small>
+</div>
 
-        /* Контент */
-        .hidden { display: none !important; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        h1 { color: var(--p); font-weight: 900; }
+<script>
+// Добавь эту функцию в конец скрипта
+async function testTg() {
+    const status = document.getElementById('tg-status');
+    status.innerText = "Отправка...";
+    status.style.color = "orange";
+    
+    try {
+        await sendTg("💎 Проверка связи! Админка Flow Lux подключена успешно.");
+        status.innerText = "✅ Сообщение ушло! Проверь Телеграм.";
+        status.style.color = "green";
+    } catch (e) {
+        status.innerText = "❌ Ошибка! Проверь Token или ID.";
+        status.style.color = "red";
+    }
+}
 
-        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 30px; }
-        .stat-card { background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0; text-align: center; }
-        .stat-card b { display: block; font-size: 24px; margin-top: 10px; }
-
-        .tg-settings { background: #f1f5f9; padding: 15px; border-radius: 12px; margin-bottom: 20px; font-size: 12px; border: 1px dashed #cbd5e1; }
-        .tg-settings input { padding: 5px; border: 1px solid #cbd5e1; border-radius: 4px; margin: 5px; }
-
-        table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        th { background: #f1f5f9; padding: 12px; text-align: left; font-size: 12px; }
-        td { padding: 12px; border-bottom: 1px solid #f1f5f9; }
-        
-        .type-badge { padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 900; }
-        .type-cash { background: #dcfce7; color: #166534; }
-        .type-card { background: #dbeafe; color: #1e40af; }
-    </style>
-</head>
-<body>
-
-    <div id="auth-screen">
-        <div class="auth-card">
-            <h2 style="margin-bottom: 20px;">Введите код</h2>
-            <input type="password" id="pass-input" maxlength="4" oninput="checkPass(this)">
-        </div>
-    </div>
-
-    <div id="main-content" class="hidden">
-        <div class="tg-settings">
-            <b>Настройка Telegram:</b>
-            <input type="text" id="tg-token" placeholder="Bot Token" onchange="saveTg()">
-            <input type="text" id="tg-id" placeholder="Your Chat ID" onchange="saveTg()">
-            <small>(Данные сохраняются только в этом браузере)</small>
-        </div>
-
-        <div class="header">
-            <h1>FLOW ADMIN 💎</h1>
-            <button onclick="localStorage.removeItem('admin_auth'); location.reload()" style="background: none; border: none; color: #94a3b8; cursor: pointer;">Выйти</button>
-        </div>
-
-        <div class="dashboard">
-            <div class="stat-card"><small>Чеков</small><b id="stCount">0</b></div>
-            <div class="stat-card"><small>Выручка</small><b id="stSales" style="color: var(--tea)">0 ₽</b></div>
-            <div class="stat-card"><small>Чаевые</small><b id="stTips" style="color: #f59e0b">0 ₽</b></div>
-            <div class="stat-card"><small>ИТОГО ВАЛ</small><b id="stGrand" style="color: var(--p)">0 ₽</b></div>
-        </div>
-
-        <table id="salesTable">
-            <thead>
-                <tr>
-                    <th>ВРЕМЯ</th>
-                    <th>ТОВАР</th>
-                    <th>СУММА</th>
-                    <th>ТИП</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody"></tbody>
-        </table>
-    </div>
-
-    <script>
-        const config = {
-            apiKey: "AIzaSyAcZmlPf71oKnxyJQ8k2xhjJJXHtPrWktY",
-            authDomain: "sales-flower-d7cb0.firebaseapp.com",
-            projectId: "sales-flower-d7cb0",
-            storageBucket: "sales-flower-d7cb0.firebasestorage.app",
-            messagingSenderId: "611059680149",
-            appId: "1:611059680149:web:a53f77fb73b6cf10242c9c"
-        };
-        firebase.initializeApp(config);
-        const db = firebase.firestore();
-
-        // АВТОРИЗАЦИЯ
-        function checkPass(el) {
-            if (el.value === '3011') {
-                localStorage.setItem('admin_auth', 'true');
-                showAdmin();
-            }
-        }
-
-        if (localStorage.getItem('admin_auth') === 'true') showAdmin();
-
-        function showAdmin() {
-            document.getElementById('auth-screen').classList.add('hidden');
-            document.getElementById('main-content').classList.remove('hidden');
-            initData();
-        }
-
-        // TELEGRAM
-        document.getElementById('tg-token').value = localStorage.getItem('tg_token') || '';
-        document.getElementById('tg-id').value = localStorage.getItem('tg_id') || '';
-
-        function saveTg() {
-            localStorage.setItem('tg_token', document.getElementById('tg-token').value);
-            localStorage.setItem('tg_id', document.getElementById('tg-id').value);
-        }
-
-        async function sendTg(text) {
-            const token = localStorage.getItem('tg_token');
-            const id = localStorage.getItem('tg_id');
-            if (!token || !id) return;
-            await fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${id}&text=${encodeURIComponent(text)}`);
-        }
-
-        // ДАННЫЕ
-        function initData() {
-            let initial = true;
-            db.collection("sales").orderBy("dt", "desc").onSnapshot(snap => {
-                let tCount = 0, tSales = 0, tTips = 0, html = "";
-                
-                if (!initial && snap.docChanges().length > 0) {
-                    snap.docChanges().forEach(change => {
-                        if (change.type === "added") {
-                            const d = change.doc.data();
-                            const msg = `🌸 ПРОДАЖА!\n💵 Сумма: ${d.p} ₽\n💐 Кол-во: ${d.q} шт\n✨ Чай: ${d.tips} ₽\n💳 Тип: ${d.t === 'cash' ? 'Наличка' : 'Карта'}`;
-                            sendTg(msg);
-                        }
-                    });
-                }
-
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    tCount++; tSales += (d.p||0); tTips += (d.tips||0);
-                    const time = d.dt ? d.dt.toDate().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}) : '--:--';
-                    html += `<tr>
-                        <td>${time}</td>
-                        <td>${d.q} шт</td>
-                        <td><b>${d.p} ₽</b> <small style="color:var(--tea)">+${d.tips}</small></td>
-                        <td><span class="type-badge ${d.t==='cash'?'type-cash':'type-card'}">${d.t==='cash'?'Нал':'Карт'}</span></td>
-                    </tr>`;
-                });
-
-                document.getElementById('tableBody').innerHTML = html;
-                document.getElementById('stCount').innerText = tCount;
-                document.getElementById('stSales').innerText = tSales.toLocaleString() + " ₽";
-                document.getElementById('stTips').innerText = tTips.toLocaleString() + " ₽";
-                document.getElementById('stGrand').innerText = (tSales + tTips).toLocaleString() + " ₽";
-                initial = false;
-            });
-        }
-    </script>
-</body>
-</html>
+// Убедись, что функция sendTg выглядит так:
+async function sendTg(text) {
+    const token = document.getElementById('tg-token').value || localStorage.getItem('tg_token');
+    const id = document.getElementById('tg-id').value || localStorage.getItem('tg_id');
+    if (!token || !id) {
+        alert("Сначала введи Token и ID!");
+        return;
+    }
+    const url = `https://api.telegram.org/bot${token}/sendMessage?chat_id=${id}&text=${encodeURIComponent(text)}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('TG Error');
+}
+</script>
