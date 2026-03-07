@@ -16,7 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <style>
-        :root { --p: #f472b6; --bg: #0f172a; --card: #1e293b; }
+        :root { --p: #f472b6; --bg: #0f172a; --card: #1e293b; --tea: #10b981; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); color: #fff; padding: 15px; min-height: 100vh; }
         
@@ -32,6 +32,8 @@
         
         input { background: #0f172a; border: 2px solid #334155; border-radius: 14px; padding: 14px; color: #fff; font-size: 18px; font-weight: 700; width: 100%; outline: none; transition: 0.3s; }
         input:focus { border-color: var(--p); }
+        .input-tea { border-color: rgba(16, 185, 129, 0.3); color: var(--tea); }
+        .input-tea:focus { border-color: var(--tea); }
         
         .pay-btn { background: #334155; border: none; padding: 12px; border-radius: 14px; color: #94a3b8; font-weight: 800; font-size: 10px; text-transform: uppercase; transition: 0.3s; }
         .pay-btn.active { background: var(--p); color: #fff; box-shadow: 0 4px 15px rgba(244,114,182,0.4); }
@@ -43,6 +45,7 @@
         .item { background: rgba(30,41,59,0.4); padding: 12px 16px; border-radius: 16px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #334155; }
         .item.cash { border-left-color: #10b981; }
         .item b { color: var(--p); }
+        .item .tea-label { color: var(--tea); font-size: 10px; margin-left: 5px; font-weight: 900; }
 
         .log-btn { background: rgba(30,41,59,0.8); border: 1px solid rgba(255,255,255,0.1); padding: 15px 10px; border-radius: 16px; color: #fff; font-size: 10px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 5px; }
         
@@ -66,6 +69,9 @@
             <div class="grid">
                 <input type="number" id="qty" placeholder="Кол-во">
                 <input type="number" id="price" oninput="upd()" placeholder="Сумма ₽">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <input type="number" id="tips" class="input-tea" placeholder="+ Чаевые ₽">
             </div>
             <div class="grid">
                 <button onclick="setPay('card')" id="p-card" class="pay-btn active">КАРТА</button>
@@ -96,6 +102,10 @@
         <div class="grid">
             <div class="card" style="text-align:center;margin-bottom:0"><small style="color:#94a3b8">ШТУК</small><b class="st-val" id="stQ" style="color:#fff">0</b></div>
             <div class="card" style="text-align:center;margin-bottom:0"><small style="color:#94a3b8">В КАССЕ</small><b class="st-val" id="stM">0</b></div>
+        </div>
+        <div class="card" style="text-align:center; margin-top:10px">
+            <small style="color:#94a3b8">ЧАЕВЫЕ (ОТДЕЛЬНО)</small>
+            <b class="st-val" id="stT" style="color:var(--tea)">0 ₽</b>
         </div>
         <div style="margin-top:15px">
             <button onclick="exportExcel()" id="btn-excel" class="main-btn" style="background:#059669">💾 СКАЧАТЬ EXCEL</button>
@@ -138,16 +148,25 @@
 
         window.upd = () => {
             const p = +document.getElementById('price').value || 0;
+            const t = +document.getElementById('tips').value || 0;
             const g = +document.getElementById('get').value || 0;
-            document.getElementById('change').innerText = (g > p ? g - p : 0) + ' ₽';
+            const total = p + t;
+            document.getElementById('change').innerText = (g > total ? g - total : 0) + ' ₽';
         };
 
         window.save = async () => {
-            const q = +document.getElementById('qty').value, p = +document.getElementById('price').value;
+            const q = +document.getElementById('qty').value, 
+                  p = +document.getElementById('price').value,
+                  t = +document.getElementById('tips').value || 0;
             if (!q || !p) return;
             saveBtn.disabled = true;
-            await db.collection("sales").add({ q, p, t: payType, dt: firebase.firestore.FieldValue.serverTimestamp() });
-            document.getElementById('qty').value = ''; document.getElementById('price').value = '';
+            await db.collection("sales").add({ 
+                q, p, t: payType, tips: t,
+                dt: firebase.firestore.FieldValue.serverTimestamp() 
+            });
+            document.getElementById('qty').value = ''; 
+            document.getElementById('price').value = '';
+            document.getElementById('tips').value = '';
             saveBtn.disabled = false;
         };
 
@@ -157,17 +176,22 @@
         };
 
         db.collection("sales").orderBy("dt", "desc").onSnapshot(snap => {
-            let tQ = 0, tM = 0, html = "", count = 0;
+            let tQ = 0, tM = 0, tT = 0, html = "", count = 0;
             snap.forEach(doc => {
-                const d = doc.data(); tQ += d.q; tM += d.p;
+                const d = doc.data(); 
+                tQ += d.q || 0; 
+                tM += d.p || 0;
+                tT += d.tips || 0;
                 if (count < 5) {
-                    html += `<div class="item ${d.t==='cash'?'cash':''}"><span>${d.q} шт — <b>${d.p} ₽</b></span><small>${d.t==='cash'?'НАЛ':'КАРТ'}</small></div>`;
+                    let teaText = d.tips ? `<span class="tea-label">+${d.tips} чай</span>` : "";
+                    html += `<div class="item ${d.t==='cash'?'cash':''}"><span>${d.q} шт — <b>${d.p} ₽</b>${teaText}</span><small>${d.t==='cash'?'НАЛ':'КАРТ'}</small></div>`;
                     count++;
                 }
             });
             document.getElementById('list').innerHTML = html;
             document.getElementById('stQ').innerText = tQ;
             document.getElementById('stM').innerText = tM.toLocaleString() + " ₽";
+            document.getElementById('stT').innerText = tT.toLocaleString() + " ₽";
         });
 
         db.collection("logs").orderBy("dt", "desc").limit(5).onSnapshot(snap => {
@@ -182,12 +206,22 @@
         window.exportExcel = async () => {
             if (typeof XLSX === 'undefined') { alert("Excel библиотека не загружена"); return; }
             const snap = await db.collection("sales").get();
-            let totalQ = 0, totalP = 0;
+            let totalQ = 0, totalP = 0, totalTips = 0;
             const data = snap.docs.map(doc => {
-                const d = doc.data(); totalQ += d.q; totalP += d.p;
-                return { "Дата": d.dt?.toDate().toLocaleString() || "-", "Кол-во": d.q, "Сумма": d.p, "Тип": d.t };
+                const d = doc.data(); 
+                totalQ += d.q || 0; 
+                totalP += d.p || 0;
+                totalTips += d.tips || 0;
+                return { 
+                    "Дата": d.dt?.toDate().toLocaleString() || "-", 
+                    "Кол-во": d.q, 
+                    "Сумма": d.p, 
+                    "Чаевые": d.tips || 0,
+                    "Тип": d.t 
+                };
             });
-            data.push({}); data.push({ "Дата": "ИТОГО:", "Кол-во": totalQ, "Сумма": totalP });
+            data.push({}); 
+            data.push({ "Дата": "ИТОГО:", "Кол-во": totalQ, "Сумма": totalP, "Чаевые": totalTips });
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Sales");
